@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="NDC26 큐카드">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fbfaf7">
+<title>NDC26 데이터 대담 · 모더레이터 큐카드</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --muted:#7a7a7a; --gold:#b08a3e;
+    --bg:#fbfaf7; --card:#ffffff; --line:#e9e4d8;
+    --me:#0a3d62; --me-bg:#eef4f8;
+    --q-ryu:#1f6e43; --q-bae:#9a4a1f; --q-im:#6b2d8a; --q-all:#444;
+    --fs:1;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,"SF Pro","Apple SD Gothic Neo","Pretendard",sans-serif;
+    -webkit-font-smoothing:antialiased; overscroll-behavior:none;}
+  body{display:flex; flex-direction:column;}
+
+  .bar{flex:0 0 auto; display:flex; align-items:center; gap:10px;
+    padding:10px 16px; padding-top:calc(10px + env(safe-area-inset-top));
+    background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:10;}
+  .bar .title{font-size:15px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bar .spacer{flex:1;}
+  .bar .clock{font-variant-numeric:tabular-nums; font-weight:800; font-size:18px; color:var(--gold);
+    cursor:pointer; padding:4px 12px; border-radius:10px; border:1px solid var(--line); white-space:nowrap;}
+  .bar .clock:active{background:#f1ede2;}
+  .bar .clock.run{color:#1a7a3a; border-color:#bfe3c8; background:#f0f8f2;}
+  .bar .clock.warn{color:#c46a16; border-color:#ecd2ad; background:#fbf3e6;}
+  .bar .clock.over{color:#c0392b; border-color:#ecc0ba; background:#fbeae8;}
+  .fsbtn{border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:10px;
+    width:40px; height:40px; font-size:18px; font-weight:700; cursor:pointer;}
+  .fsbtn:active{background:#f1ede2;}
+
+  .dots{flex:0 0 auto; display:flex; gap:6px; justify-content:flex-start;
+    padding:8px 14px; background:var(--card); border-bottom:1px solid var(--line);
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .dots::-webkit-scrollbar{display:none;}
+  .dot{flex:0 0 auto; font-size:13px; color:var(--ink); padding:5px 11px; border-radius:999px; border:1px solid var(--line); cursor:pointer; white-space:nowrap; font-weight:600;}
+  .dot.active{background:var(--gold); color:#fff; border-color:var(--gold); font-weight:700;}
+
+  .stage{flex:1 1 auto; position:relative; overflow:hidden;}
+  .track{display:flex; height:100%; transition:transform .25s ease;}
+  .page{flex:0 0 100%; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:22px 26px 120px;}
+
+  .kicker{font-size:calc(15px*var(--fs)); color:var(--ink); font-weight:700; letter-spacing:.5px; margin:0 0 4px;}
+  .h{font-size:calc(30px*var(--fs)); font-weight:800; margin:0 0 4px; line-height:1.25;}
+  .time{font-size:calc(16px*var(--fs)); color:var(--ink); font-weight:700; margin:0 0 18px;}
+  .gold-rule{height:2px; background:var(--gold); opacity:.5; border:0; margin:0 0 20px;}
+
+  /* moderator script lines */
+  .me{background:var(--me-bg); border-left:5px solid var(--me); border-radius:8px;
+    padding:16px 18px; margin:0 0 18px;}
+  .me .tag{font-size:calc(14px*var(--fs)); font-weight:800; color:var(--me); margin:0 0 8px; letter-spacing:.3px;}
+  .me p{margin:0 0 7px; font-size:calc(21px*var(--fs)); line-height:1.5; font-weight:500;}
+  .me p:last-child{margin-bottom:0;}
+  .me .dim{color:var(--ink); font-weight:500; font-size:calc(17px*var(--fs));}
+
+  /* questions */
+  .q{display:flex; align-items:stretch; gap:14px;
+    padding:16px 18px; margin:0 0 14px; border-radius:10px; background:var(--card);
+    border:1px solid var(--line); border-left:8px solid var(--q-all);}
+  .q .who{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-width:calc(66px*var(--fs)); padding:8px 10px; border-radius:10px; color:#fff;}
+  .q .who .nm{font-size:calc(19px*var(--fs)); font-weight:900; line-height:1.15; white-space:nowrap;}
+  .q .who .org{font-size:calc(11px*var(--fs)); font-weight:600; opacity:.9; margin-top:3px; white-space:nowrap;}
+  .q .qt{flex:1 1 auto; margin:0; font-size:calc(21px*var(--fs)); line-height:1.5; font-weight:500; align-self:center;}
+  .q .qt small{display:block; color:var(--ink); font-size:calc(15px*var(--fs)); font-weight:700; margin-top:6px;}
+  .q.ryu{border-left-color:var(--q-ryu);} .q.ryu .who{background:var(--q-ryu);}
+  .q.bae{border-left-color:var(--q-bae);} .q.bae .who{background:var(--q-bae);}
+  .q.im{border-left-color:var(--q-im);}  .q.im  .who{background:var(--q-im);}
+
+  /* pair: two panelists, split colour label */
+  .q.pair{border-left-color:var(--gold);}
+  .q.pair .who{padding:0; overflow:hidden; flex-direction:column;}
+  .q.pair .who .half{flex:1; display:flex; align-items:center; justify-content:center; padding:6px 10px; width:100%;}
+  .q.pair .who .half .nm{font-size:calc(16px*var(--fs));}
+  .q.pair .who .half.ryu{background:var(--q-ryu);}
+  .q.pair .who .half.bae{background:var(--q-bae);}
+  .q.pair .who .half.im{background:var(--q-im);}
+
+  /* 공통 — gold dashed band */
+  .q.all{flex-direction:column; gap:10px; border:2px dashed var(--gold); border-left:8px solid var(--gold);
+    background:#fbf6ea;}
+  .q.all .who{flex-direction:row; gap:8px; align-self:stretch; justify-content:center; width:100%;
+    background:var(--gold); padding:8px 12px;}
+  .q.all .who .nm{font-size:calc(16px*var(--fs)); letter-spacing:.5px;}
+  .q.all .who .org{display:none;}
+  .q.all .qt{align-self:auto;}
+
+  /* option (여유 시) */
+  .opt{border-style:dashed;}
+  .opt-tag{display:inline-block; font-size:calc(13px*var(--fs)); font-weight:800; color:var(--gold);
+    border:1px solid var(--gold); border-radius:6px; padding:1px 7px; margin:0 0 8px;}
+
+  .note{font-size:calc(15px*var(--fs)); color:var(--ink); margin:16px 0 0; line-height:1.5;}
+  .av{font-size:calc(15px*var(--fs)); color:#1a1a1a; background:#f7f0dd; border-radius:8px;
+    padding:12px 15px; margin:14px 0 0; line-height:1.5; font-weight:600;}
+  .star{color:#c0392b; font-weight:800;}
+
+  /* broadcast cut marker */
+  .cut{display:flex; align-items:center; gap:10px; margin:22px 0; color:#c0392b; font-weight:800; font-size:calc(15px*var(--fs));}
+  .cut::before,.cut::after{content:""; flex:1; height:2px; background:#e3b4ad;}
+
+  .nav{position:absolute; bottom:18px; left:0; right:0; display:flex; justify-content:space-between;
+    padding:0 18px; pointer-events:none; z-index:7;}
+  .nav button{pointer-events:auto; border:0; background:var(--ink); color:#fff; opacity:.5;
+    border-radius:999px; height:42px; min-width:42px; padding:0 14px; font-size:15px; font-weight:700;
+    box-shadow:0 2px 10px rgba(0,0,0,.14); cursor:pointer;}
+  .tapzone{position:absolute; top:0; bottom:0; width:20%; z-index:5; background:transparent;}
+  .tapzone.left{left:0;} .tapzone.right{right:0;}
+  .edgehint{position:absolute; top:50%; transform:translateY(-50%); z-index:6; pointer-events:none;
+    font-size:34px; font-weight:800; color:var(--gold); opacity:.18; user-select:none;}
+  .edgehint.left{left:10px;} .edgehint.right{right:10px;}
+  .pageno{position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+    font-size:13px; color:var(--ink); font-weight:700; pointer-events:none;}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span class="title">NDC26 데이터 대담</span>
+    <span class="spacer"></span>
+    <span class="clock" id="clock" title="탭 시작/일시정지 · 더블탭 리셋">▶ 70:00</span>
+    <button class="fsbtn" id="fsdown">A−</button>
+    <button class="fsbtn" id="fsup">A+</button>
+  </div>
+  <div class="dots" id="dots"></div>
+  <div class="stage">
+    <div class="track" id="track"></div>
+    <div class="tapzone left" id="tapL"></div>
+    <div class="tapzone right" id="tapR"></div>
+    <div class="edgehint left">‹</div>
+    <div class="edgehint right">›</div>
+    <div class="nav">
+      <button id="prev">‹</button>
+      <button id="next">›</button>
+    </div>
+    <div class="pageno" id="pageno"></div>
+  </div>
+
+<script>
+const WHO = {
+  ryu: {nm:'류청훈', org:'기술본부장'},
+  bae: {nm:'배준영', org:'플랫폼본부장'},
+  im:  {nm:'임진식', org:'SE총괄'},
+};
+
+const PAGES = [
+  { nav:'오프닝', kick:'오프닝', h:'오프닝', time:'천천히, 눈 맞추며',
+    blocks:[
+      {me:[
+        '안녕하세요, 반갑습니다.',
+        "오늘 'AI 시대, 넥슨은 데이터로 무엇을 준비하는가' 대담 모더레이터 한운희입니다.",
+        '넥슨이 좋은 시간에 초대해줘서 → 2년 만에 판교 / 시간 참 빠르다',
+        '오시며 보신 짓고 있는 큰 건물 → 2년 전 그 기공식에 참석했던 기억',
+        '그때 설계도·조감도뿐이던 게 → 이제 형태를 갖춤',
+        '근데 2년간 더 바뀐 건 → 바로 AI',
+        '2년 전 AI 환경과 지금은 또 다르다 / AI가 다 집어삼킴 — 기술·산업·자본, 심지어 정치까지 / 속도·규모 어마어마',
+        '그런데 이 시점에 우리는 데이터 이야기로 모였다',
+        '왜 데이터인가? AI 시대에 데이터는 어떤 가치인가?',
+        '가장 기본적인 질문부터 → 패널과',
+      ]},
+    ]
+  },
+
+  { nav:'Q1·왜데이터', kick:'Q1', h:'AI 시대, 왜 데이터인가', time:'첫 답변에 자기소개 함께 · 류청훈부터',
+    blocks:[
+      {me:[
+        '여기 세 분의 패널이 계신데요',
+        '첫 질문에 대한 생각 + 간단한 자기소개 함께',
+        '가까이 계신 류청훈 본부장님부터 해주실까요?',
+      ]},
+      {who:'ryu', q:'데이터 인프라 포함 사내 인프라를 개발·제공하는 기술본부를 총괄하시는데요, 지난 2~3년 AI 때문에 맡으신 조직은 어떤 변화를 겪고 있나요? 특히 데이터 인프라 관점에서.'},
+      {who:'bae', q:'데이터를 AI로 여러 서비스 단위로 만들어 제공하고 계신데요, 특히 데이터가 더 결정적인 역할을 한다고 느낀 사례가 있을까요?'},
+      {who:'im', q:'국내뿐 아니라 글로벌 여러 기업의 데이터 여정을 목격하셨는데요, 최근 2~3년 AI가 모든 곳에 필수 도구로 침투하면서 데이터 여정이 달라진 점이 있을까요?'},
+    ]
+  },
+
+  { nav:'Q2·모노레이크', kick:'Q2', h:'모노레이크', time:'자본시장 브리핑 = 펀치라인',
+    blocks:[
+      {me:[
+        'AI 시대 데이터 중요성, 다시 확인했고',
+        "넥슨은 그래서 데이터를 핵심 경쟁력으로 → '모노레이크'를 만들어옴",
+        '올해 3월, 인상 깊은 장면 하나',
+        "넥슨이 도쿄서 투자자 모아 '자본시장 브리핑'",
+        "이정헌 대표: 모노레이크 = '어떤 기업도 따라올 수 없는 전략적 강점'",
+        '회사를 가장 정확·예민하게 보는 사람들에게 → 넥슨 대표 경쟁 무기',
+        '그 모노레이크 이야기를 지금부터 / 익숙한 분도, 처음 듣는 분도',
+      ]},
+      {who:'ryu', q:'모노레이크가 한 마디로 뭔가요?'},
+      {who:'ryu', q:'1.0을 거쳐 지금 2.0을 만들어가는 걸로 아는데, 둘 차이는 뭔가요?'},
+      {pair:['ryu','bae'], q:'모노레이크가 내부에 자리잡고 변화가 느껴진 시점은 언제부터였고, 뭘 통해서였나요?', sub:'두 본부장님 역할이 다르니 각각'},
+      {who:'im', q:'1.0을 만들며 스노우플레이크와 긴밀히 협업했는데, 스노우플레이크가 본 1.0의 핵심 강점은?'},
+    ]
+  },
+
+  { nav:'Q3·민주화', kick:'Q3', h:'데이터 민주화', time:'더딘 곳 이름은 콕 집지 않기',
+    blocks:[
+      {me:[
+        "모노레이크 1.0이 이룬 대표 성과 → '데이터 민주화'",
+        '만만치 않은 일 (데이터 분야 분들은 금방 아실 것) / 모든 건 명암이 있다',
+      ]},
+      {who:'ryu', q:'누구나 쉽게 접근·활용하는 장점이 있지만 부작용도 있죠. 비효율 쿼리로 클라우드 데이터 플랫폼의 쿼리 비용이 급격히 늘 수도 있고요. 이 양면성에서 특히 무엇을 신경 쓰셨나요?'},
+      {who:'bae', q:'서비스 레벨에서 더 체감하셨을 텐데요, 조직마다 민주화가 자리잡는 속도가 달랐을 것 같습니다. 가장 빠르게 자리잡은 곳은?'},
+      {who:'bae', q:'반대로 생각보다 더디다고 느낀 곳도 있었을 듯합니다. 그 부분도 고민이 많으셨을 텐데, 이유가 무엇이었고 혹시 진전을 만들었다면 어떤 부분을 푸셨나요?'},
+      {who:'im', q:'앞서 두 본부장님 말씀하신 영역이 총괄님 전문 영역일 듯한데요, 데이터 민주화가 실제 성과로 이어지려면 꼭 필요한 게? 데이터 거버넌스를 현장에서 많이 보신 분으로서.'},
+    ]
+  },
+
+  { nav:'Q4·2.0', kick:'Q4', h:'모노레이크 2.0', time:'AI-Ready Data 처음 나올 때 한 번 풀기',
+    blocks:[
+      {me:[
+        '이제 조금 더 AI에 가까운 이야기',
+        "2.0의 핵심 키워드 → 'AI-Ready Data'",
+      ]},
+      {who:'ryu', q:"그 'AI-Ready Data', 즉 AI를 위한 데이터란 과연 무엇일까요?"},
+      {who:'ryu', q:"1.0 때도 그랬겠지만, 2.0에선 현업의 도메인 전문성이 더 절실하죠. 이 '절실한 협업'은 어떻게 만들어가셨나요?", sub:"첫날 이정헌 대표 키노트 'NDC 정신 = 현장 경험·통찰 나누기' → 그 정신대로 생생한 현장 경험으로"},
+      {who:'ryu', q:"현업과 함께 만드는 '온톨로지 팩토리'가 2.0, 나아가 넥슨 AI 인프라의 심장으로 보입니다. AI 품질을 높이기 위해 가장 신경 쓰는 부분은?"},
+      {who:'im', q:'온톨로지, 시맨틱 레이어 — AI 전환 때 필연적으로 마주하는 과제죠. 부딪히는 장벽은? 푸는 핵심 키는?'},
+      {who:'im', opt:true, q:'여러 기업의 DX·AX를 봐오셨는데, AI 시대에 제대로 작동할 데이터 플랫폼의 필수 조건은?'},
+    ]
+  },
+
+  { nav:'Q5·조직활용', kick:'Q5', h:'조직 활용', time:'enabler 먼저 규정 말 것',
+    blocks:[
+      {me:[
+        '시스템·솔루션은 결국 사람이, 조직이 쓰는 것',
+        '아무리 잘 만들어도 제대로 안 쓰면 → 비효율 투자',
+        '모노레이크는 어땠는지 자세히',
+      ]},
+      {who:'bae', q:'이제 각 조직 구성원이 필요한 데이터 서비스를 직접 만들게 됐죠. 플랫폼본부가 만들어 제공하던 방식과 어떤 차이가 보이나요?'},
+      {who:'bae', q:'이제는 플랫폼본부가 아니어도, 비엔지니어 조직에서도 직접 데이터를 활용하고 애플리케이션까지 만드는 상황입니다. 만드는 일을 여러 조직이 나눠 갖게 된 셈인데, 플랫폼본부의 역할은 어떻게 달라지고 있나요?'},
+    ]
+  },
+
+  { nav:'Q6·래그&확장', kick:'Q6', h:'초개인화 래그 & 확장', time:'RAG="래그", Q6-1서 한 번 풀기',
+    blocks:[
+      {who:'bae', q:"2.0 이야기를 들어보니 내부 변화뿐 아니라 라이브 게임 운영에도 영향을 줄 듯합니다. (사전 미팅서 보여주신) '초개인화 RAG(래그)' — 외부 데이터를 검색해 AI 답변에 끌어오는 방식인데, 기존 게임사의 유저 개인화와 무엇이 다른지 간략히?"},
+      {who:'bae', q:'설명을 들으니 초개인화 래그가 게임뿐 아니라 다른 영역에도 쓰일 듯한데, 게임 외에 적용해보고 싶은 영역이 있을까요?'},
+      {who:'im', q:'여러 비즈니스 영역을 경험하신 입장에서, 초개인화 래그가 다른 비즈니스 영역으로 이식될 요소가 보이시나요?'},
+      {av:"◇ 여유 시 — 소니 그룹 사례: '귀멸의 칼날' 극장판 흥행 / 게임·음악·영화 데이터 통합 → 금융 고객 중 숨은 팬 발견 / 중추 = PSN(게임!) → 게임 데이터가 영화 마케팅 엔진 → \"넥슨은?\""},
+    ]
+  },
+
+  { nav:'Q7·경험과교훈', kick:'Q7', h:'경험과 교훈 · 리캡', time:'Q7-3 = ★핵심(조직문화)',
+    blocks:[
+      {me:[
+        '이제 대담 막바지',
+        'AI 시대 핵심 자산 모노레이크를 만들고 운영하며 겪은 현장 경험·통찰을 나누고 마무리',
+      ]},
+      {who:'all', label:'공통 · 세 분 모두', q:'진행하며 예상보다 어려웠던 부분은? 각자 역할이 다르니 한 분씩.'},
+      {pair:['ryu','bae'], q:"초창기로 돌아간다면 '이것만큼은 반드시 하겠다' 싶은 게 있으세요?"},
+      {pair:['ryu','bae'], star:true, q:'(마지막) 기술·인프라로 시작했지만 → 점점 조직문화 프로젝트라는 인상. 진행 과정에서 가장 어려웠던 조직적 과제는? 어떻게 푸셨나요?'},
+      {who:'im', q:'이 부분 더 많이 보셨을 듯 — 여러 기업 공통. 이런 조직적 문제에 부딪혔을 때, 가장 먼저 무엇을 시도해 풀어야 할까요?'},
+    ]
+  },
+
+  { nav:'Q8·클로징', kick:'Q8', h:'클로징 — 마지막 두 질문', time:'중계 구간 / 박수는 맨 끝',
+    blocks:[
+      {me:[
+        '이제 대담 마무리 + 현장 질문도 소화',
+        '마지막으로 세 분께 두 가지 질문',
+      ]},
+      {who:'all', label:'공통 · 세 분 모두', q:'각자 현장에 돌아가 AI 전환용 통합 데이터 인프라를 구상한다면, 어떤 부분을 특히 집중해서 봐야 할까요?', sub:'각자 한 가지씩만'},
+      {who:'im', q:'넥슨은 투자할 수 있지만 모든 기업이 그렇진 않죠. 대규모 투자 어려운 환경에서 AI-Ready Data로 가는 첫걸음으로 무엇을 권하시겠습니까?', sub:'임진식 먼저 → 여유 시 두 본부장께도'},
+    ]
+  },
+
+  { nav:'정리(중계中)', kick:'클로징', h:'대담 정리', time:'★ 여기까지 중계 — 핵심 다 말하기',
+    blocks:[
+      {me:[
+        '생생하고 구체적인 답변 감사합니다.',
+        '오늘 세 분과 — 왜 데이터가 AI 시대 핵심 자산인지,',
+        '넥슨은 그 자산을 모노레이크로 어떻게 만들고 진화시켜 왔는지 나눴다',
+        "첫날 아침 강대현 대표 키노트 '축적된 지능'(Accumulated Intelligence라고 했죠)",
+        '시간이 쌓아올린 맥락 자본 이야기',
+        "어쩌면 오늘 모노레이크 이야기가 그 '축적된 지능'을 실제로 쌓아온 과정,",
+        '바로 그 현장의 기록이 아니었나 싶습니다',
+      ]},
+    ]
+  },
+
+  { nav:'현장Q&A', kick:'현장 Q&A', h:'현장 질의응답', time:'중계 종료 구간',
+    blocks:[
+      {me:[
+        '유튜브 중계는 여기까지입니다. 먼저 유튜브로 긴 시간 시청해 주신 분들께 감사드립니다.',
+        '이제 현장 질문을 받도록 하겠습니다.',
+        '손 들어주시면 마이크 전달',
+        '특정 패널 지정 / 공통 질문 둘 다 가능',
+      ]},
+      {av:'운영: 질문↔답변 사이 2~3초 pause / 질문자 마이크 필수'},
+    ]
+  },
+
+  { nav:'마무리', kick:'마무리', h:'마무리 — 현장 전용', time:'박수는 여기서',
+    blocks:[
+      {me:[
+        '네, 이제 마무리할 시간',
+        '더 궁금하면 → 로비 네트워킹 존에서 패널분들과',
+        '연관 세션 안내:',
+        '· 내일 오전 10시, 이 자리 — \'AI 서치\' 발표 세션',
+        '· 오후 1시, 이 자리 — \'넥슨과 크래프톤의 AX 여정\' 대담',
+        '오늘 이야기 바탕으로 들으면 맥락이 더 쌓일 듯 / 권해드림',
+        '마지막으로 — 생생한 경험·통찰 나눠주신 세 분께 박수!',
+        '긴 시간 함께해주신 청중께도 감사',
+        '마치겠습니다.',
+      ]},
+    ]
+  },
+];
+
+const track = document.getElementById('track');
+const dots  = document.getElementById('dots');
+let idx = 0;
+
+function whoLabel(b){
+  if(b.who==='all'){
+    return `<div class="q all"><span class="who"><span class="nm">◆ ${b.label||'공통'} · 세 분 모두</span></span><p class="qt">${b.q}${b.sub?`<small>${b.sub}</small>`:''}</p></div>`;
+  }
+  if(b.pair){
+    const halves = b.pair.map(c=>`<span class="half ${c}"><span class="nm">${WHO[c].nm}</span></span>`).join('');
+    const cls = b.star?'star-row':'';
+    return `<div class="q pair ${cls}"><span class="who">${halves}</span><p class="qt">${b.star?'<span class="star">★ </span>':''}${b.q}${b.sub?`<small>${b.sub}</small>`:''}</p></div>`;
+  }
+  const w = WHO[b.who];
+  const optCls = b.opt?' opt':'';
+  const optTag = b.opt?'<span class="opt-tag">여유 시</span> ':'';
+  return `<div class="q ${b.who}${optCls}"><span class="who"><span class="nm">${w.nm}</span><span class="org">${w.org}</span></span><p class="qt">${optTag}${b.q}${b.sub?`<small>${b.sub}</small>`:''}</p></div>`;
+}
+
+PAGES.forEach((pg,i)=>{
+  const p = document.createElement('div'); p.className='page';
+  let html = `<p class="kicker">${pg.kick}</p><h1 class="h">${pg.h}</h1><p class="time">${pg.time}</p><hr class="gold-rule">`;
+  pg.blocks.forEach(b=>{
+    if(b.me){ html += `<div class="me"><div class="tag">▶ 내가 말한다</div>${b.me.map(x=>`<p>${x}</p>`).join('')}</div>`; }
+    else if(b.q!==undefined){ html += whoLabel(b); }
+    else if(b.cut){ html += `<div class="cut">${b.cut}</div>`; }
+    else if(b.av){ html += `<div class="av">${b.av}</div>`; }
+    else if(b.note){ html += `<p class="note">※ ${b.note}</p>`; }
+  });
+  p.innerHTML = html;
+  track.appendChild(p);
+
+  const d = document.createElement('div'); d.className='dot';
+  d.textContent = pg.nav || pg.kick;
+  d.onclick=()=>go(i);
+  dots.appendChild(d);
+});
+
+function go(n){
+  idx = Math.max(0, Math.min(PAGES.length-1, n));
+  track.style.transform = `translateX(-${idx*100}%)`;
+  [...dots.children].forEach((d,i)=>d.classList.toggle('active', i===idx));
+  const ad = dots.children[idx]; if(ad) ad.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
+  document.getElementById('prev').disabled = idx===0;
+  document.getElementById('next').disabled = idx===PAGES.length-1;
+  document.getElementById('pageno').textContent = `${idx+1} / ${PAGES.length}`;
+  const cur = track.children[idx]; if(cur) cur.scrollTop = 0;
+}
+document.getElementById('prev').onclick=()=>go(idx-1);
+document.getElementById('next').onclick=()=>go(idx+1);
+document.getElementById('tapL').onclick=()=>go(idx-1);
+document.getElementById('tapR').onclick=()=>go(idx+1);
+
+let sx=0, sy=0, swiping=false;
+track.addEventListener('touchstart',e=>{sx=e.touches[0].clientX; sy=e.touches[0].clientY; swiping=true;},{passive:true});
+track.addEventListener('touchend',e=>{
+  if(!swiping) return; swiping=false;
+  const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.4){ dx<0?go(idx+1):go(idx-1); }
+},{passive:true});
+
+let fs=1.0;
+function applyFs(){document.documentElement.style.setProperty('--fs', fs.toFixed(2));}
+document.getElementById('fsup').onclick=()=>{fs=Math.min(1.6, fs+0.1); applyFs();};
+document.getElementById('fsdown').onclick=()=>{fs=Math.max(0.8, fs-0.1); applyFs();};
+
+// countdown timer — 70 min default
+const TOTAL = 70*60;
+let remain = TOTAL, running = false, timerId = null;
+const clk = document.getElementById('clock');
+function fmt(s){ const neg=s<0; s=Math.abs(s); const m=Math.floor(s/60), ss=s%60; return (neg?'+':'')+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0'); }
+function paint(){
+  clk.classList.remove('run','warn','over');
+  if(!running && remain===TOTAL){ clk.textContent='▶ '+fmt(remain); return; }
+  clk.textContent=(running?'':'⏸ ')+fmt(remain);
+  if(remain<=0) clk.classList.add('over');
+  else if(remain<=5*60) clk.classList.add('warn');
+  else if(running) clk.classList.add('run');
+}
+function tickTimer(){ remain-=1; paint(); }
+function start(){ if(timerId) return; running=true; timerId=setInterval(tickTimer,1000); paint(); }
+function pause(){ running=false; if(timerId){clearInterval(timerId); timerId=null;} paint(); }
+function reset(){ pause(); remain=TOTAL; paint(); }
+let lastTap=0;
+clk.addEventListener('click', ()=>{
+  const now=Date.now();
+  if(now-lastTap<350){ reset(); lastTap=0; return; }
+  lastTap=now;
+  setTimeout(()=>{ if(Date.now()-lastTap>=350){ running?pause():start(); } }, 360);
+});
+paint();
+
+go(0);
+
+// offline support (sw.js, added at final stage)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
